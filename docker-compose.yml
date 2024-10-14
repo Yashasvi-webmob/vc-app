@@ -1,0 +1,13 @@
+version: "3"
+services:
+  linux:
+    container_name: "sfu-app-container"
+    image: "sfu-app"
+    restart: "always"
+    tty: true
+    ports:  
+      - "3000:3000"
+      - "2000-2020:2000-2020"
+      # - "10000-10010:10000-10010"
+    volumes:
+      - "/home/yashasvi/Desktop/sfu-vc-app:/usr/src"
