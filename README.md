@@ -2,4 +2,4 @@
 # start server : npm start
 # start watchify: npm run watch
 
-* The ui is rendered on http://localhost:4004
+* The ui is rendered on http://localhost:4004/sfu
