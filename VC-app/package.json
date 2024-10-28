@@ -5,12 +5,13 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start":"nodemon app.js",
-    "watch":"watchify public/index.js -o public/bundle.js -v"
+    "start": "nodemon app.js",
+    "watch": "watchify public/index.js -o public/bundle.js -v"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "mediasoup": "^3.14.14",
     "mediasoup-client": "^3.7.17",

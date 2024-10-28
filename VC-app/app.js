@@ -1,3 +1,7 @@
+
+import dotenv from 'dotenv';
+dotenv.config();
+
 /**
  * integrating mediasoup server with a node.js application
  */
@@ -8,7 +12,7 @@ import express from "express";
 const app = express();
 import { STUN_SERVERS } from "./constants/stunServers.js";
 // import https from 'httpolyglot'
-import http from "http";
+import https from "https";
 import fs from "fs";
 import path from "path";
 const __dirname = path.resolve();
@@ -22,6 +26,33 @@ const iceServer = [
   },
 ];
 
+// // app.js
+// const iceServers = {
+//   iceServers: [
+//     { urls: 'stun:stun.l.google.com:19302' },  // Example STUN server
+//     // Add your TURN server if necessary, example:
+//     // {
+//     //   urls: 'turn:your-turn-server.com',
+//     //   username: 'username',
+//     //   credential: 'password'
+//     // }
+//   ]
+// };
+
+// const peerConnection = new RTCPeerConnection(iceServers);
+
+// // Log ICE candidates
+// peerConnection.onicecandidate = (event) => {
+//   if (event.candidate) {
+//     console.log('New ICE candidate:', event.candidate);
+//     // Send the candidate to the remote peer via your signaling server
+//   } else {
+//     console.log('All ICE candidates have been sent.');
+//   }
+// };
+
+
+
 app.get("/", (req, res) => {
   res.send("Hello from mediasoup app!");
 });
@@ -34,7 +65,7 @@ const options = {
   cert: fs.readFileSync("./server/ssl/cert.pem", "utf-8"),
 };
 
-const httpsServer = http.createServer(options, app);
+const httpsServer = https.createServer(options, app);
 httpsServer.listen(4004, () => {
   console.log("listening on port: " + 4004);
 });
@@ -225,48 +256,71 @@ peers.on("connection", async (socket) => {
 
   socket.on("consumer-resume", async () => {
     console.log("consumer resume");
-    await consumer.resume();
+    const resumeVal = await consumer.resume();
+    console.log({ resumeVal });
+    const stats = await consumer.getStats();
+    console.log("Consumer stats:", stats);
+
+    // Look for specific packet-related stats
+    stats.forEach((stat) => {
+      if (stat.type === "inbound-rtp") {
+        console.log(
+          `Packets received: ${stat.packetsReceived}, Packets lost: ${stat.packetsLost}`
+        );
+      }
+    });
   });
 });
 
 const createWebRtcTransport = async (callback) => {
   try {
-    // https://mediasoup.org/documentation/v3/mediasoup/api/#WebRtcTransportOptions
+    // Get the external IP of your server
+    const localIp = '0.0.0.0';  // Bind to all IPv4 interfaces
+    const externalIp = process.env.EXTERNAL_IP || '192.168.1.X'; // Replace X with your server's local IP
+
     const webRtcTransport_options = {
       listenIps: [
         {
-          ip: "0.0.0.0", // replace with relevant IP address
-          announcedIp: "127.0.0.1",
-        },
+          ip: localIp,
+          announcedIp: externalIp, // IP that will be advertised in ICE candidates
+        }
       ],
       enableUdp: true,
       enableTcp: true,
       preferUdp: true,
-      iceServer,
+      initialAvailableOutgoingBitrate: 1000000,
+      minimumAvailableOutgoingBitrate: 600000,
+      maxSctpMessageSize: 262144,
+      // Enable TURN if needed
+      enableSctp: true,
+      numSctpStreams: { OS: 1024, MIS: 1024 },
     };
 
-    // https://mediasoup.org/documentation/v3/mediasoup/api/#router-createWebRtcTransport
     let transport = await router.createWebRtcTransport(webRtcTransport_options);
     console.log(`transport id: ${transport.id}`);
 
-    transport.on("dtlsstatechange", (dtlsState) => {
-      if (dtlsState === "closed") {
+    transport.on('dtlsstatechange', (dtlsState) => {
+      if (dtlsState === 'closed') {
         transport.close();
       }
     });
 
-    transport.on("close", () => {
-      console.log("transport closed");
+    transport.on('close', () => {
+      console.log('transport closed');
     });
 
-    // send back to the client the following prameters
+    // Log ICE connection state changes
+    transport.on('icestatechange', (iceState) => {
+      console.log('ICE state changed to', iceState);
+    });
+
     callback({
-      // https://mediasoup.org/documentation/v3/mediasoup-client/api/#TransportOptions
       params: {
         id: transport.id,
         iceParameters: transport.iceParameters,
         iceCandidates: transport.iceCandidates,
         dtlsParameters: transport.dtlsParameters,
+        sctpParameters: transport.sctpParameters,
       },
     });
 
@@ -280,3 +334,55 @@ const createWebRtcTransport = async (callback) => {
     });
   }
 };
+
+// const createWebRtcTransport = async (callback) => {
+//   try {
+//     // https://mediasoup.org/documentation/v3/mediasoup/api/#WebRtcTransportOptions
+//     const webRtcTransport_options = {
+//       listenIps: [
+//         {
+//           ip: "0.0.0.0", // replace with relevant IP address
+//           announcedIp: "127.0.0.1",
+//         },
+//       ],
+//       enableUdp: true,
+//       enableTcp: true,
+//       preferUdp: true,
+//       iceServer,
+//     };
+
+//     // https://mediasoup.org/documentation/v3/mediasoup/api/#router-createWebRtcTransport
+//     let transport = await router.createWebRtcTransport(webRtcTransport_options);
+//     console.log(`transport id: ${transport.id}`);
+
+//     transport.on("dtlsstatechange", (dtlsState) => {
+//       if (dtlsState === "closed") {
+//         transport.close();
+//       }
+//     });
+
+//     transport.on("close", () => {
+//       console.log("transport closed");
+//     });
+
+//     // send back to the client the following prameters
+//     callback({
+//       // https://mediasoup.org/documentation/v3/mediasoup-client/api/#TransportOptions
+//       params: {
+//         id: transport.id,
+//         iceParameters: transport.iceParameters,
+//         iceCandidates: transport.iceCandidates,
+//         dtlsParameters: transport.dtlsParameters,
+//       },
+//     });
+
+//     return transport;
+//   } catch (error) {
+//     console.log(error);
+//     callback({
+//       params: {
+//         error: error,
+//       },
+//     });
+//   }
+// };
