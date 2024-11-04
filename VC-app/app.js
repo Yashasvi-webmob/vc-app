@@ -1,5 +1,4 @@
-
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
 /**
@@ -13,6 +12,7 @@ const app = express();
 import { STUN_SERVERS } from "./constants/stunServers.js";
 // import https from 'httpolyglot'
 import https from "https";
+import http from "http";
 import fs from "fs";
 import path from "path";
 const __dirname = path.resolve();
@@ -50,8 +50,6 @@ const iceServer = [
 //     console.log('All ICE candidates have been sent.');
 //   }
 // };
-
-
 
 app.get("/", (req, res) => {
   res.send("Hello from mediasoup app!");
@@ -275,15 +273,15 @@ peers.on("connection", async (socket) => {
 const createWebRtcTransport = async (callback) => {
   try {
     // Get the external IP of your server
-    const localIp = '0.0.0.0';  // Bind to all IPv4 interfaces
-    const externalIp = process.env.EXTERNAL_IP || '192.168.1.X'; // Replace X with your server's local IP
+    const localIp = "0.0.0.0"; // Bind to all IPv4 interfaces
+    const externalIp = process.env.EXTERNAL_IP || "192.168.1.X"; // Replace X with your server's local IP
 
     const webRtcTransport_options = {
       listenIps: [
         {
           ip: localIp,
           announcedIp: externalIp, // IP that will be advertised in ICE candidates
-        }
+        },
       ],
       enableUdp: true,
       enableTcp: true,
@@ -299,19 +297,19 @@ const createWebRtcTransport = async (callback) => {
     let transport = await router.createWebRtcTransport(webRtcTransport_options);
     console.log(`transport id: ${transport.id}`);
 
-    transport.on('dtlsstatechange', (dtlsState) => {
-      if (dtlsState === 'closed') {
+    transport.on("dtlsstatechange", (dtlsState) => {
+      if (dtlsState === "closed") {
         transport.close();
       }
     });
 
-    transport.on('close', () => {
-      console.log('transport closed');
+    transport.on("close", () => {
+      console.log("transport closed");
     });
 
     // Log ICE connection state changes
-    transport.on('icestatechange', (iceState) => {
-      console.log('ICE state changed to', iceState);
+    transport.on("icestatechange", (iceState) => {
+      console.log("ICE state changed to", iceState);
     });
 
     callback({
